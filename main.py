@@ -19,9 +19,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 EMOJIS = ["🙂", "🙃", "😉", "😊", "😇", "🤗", "😎", "🤩", "🤔", "😺"]
-API_ID = 20121768
-API_HASH = '5d579eeab57590fd3e68c6e68ba1249c'
-API_TOKEN = '7725000275:AAGfzf_M0sj8RqQEKKsg6sUUybxBpG0A_tA'
+API_ID = int(os.environ['API_ID'])
+API_HASH = os.environ['API_HASH']
+API_TOKEN = os.environ['API_TOKEN']
+# API_ID = 20121768
+# API_HASH = '5d579eeab57590fd3e68c6e68ba1249c'
+# API_TOKEN = os.environ['7725000275:AAGfzf_M0sj8RqQEKKsg6sUUybxBpG0A_tA']
 
 class UserState:
     def __init__(self):
@@ -63,10 +66,10 @@ class TelegramSpammer:
                 try:
                     qr_img.save(qr_path)
                     if qr_callback:
-                        qr_callback(qr_path)
+                        await qr_callback(qr_path)
                 except Exception as e:
                     if error_callback:
-                        error_callback(f"Failed to save QR code: {e}")
+                        await error_callback(f"Failed to save QR code: {e}")
                     logger.error(f"Failed to save QR code for {phone}: {e}")
                     return False
                 try:
