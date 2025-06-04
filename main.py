@@ -43,66 +43,67 @@ class TelegramSpammer:
         self.bot_sessions = {}
         self.templates = {}
 
-    async def connect_account(self, phone, user_id, qr_callback=None, error_callback=None):
-        if not phone.startswith('+'):
-            if error_callback:
-                error_callback(f"Invalid phone format: {phone}")
-            logger.error(f"Invalid phone format: {phone}")
-            return False
-        try:
-            if phone in self.clients:
-                client = self.clients[phone]
-            else:
-                client = TelegramClient(MemorySession(), API_ID, API_HASH)
-                self.clients[phone] = client
-            await client.connect()
-            if not await client.is_user_authorized():
-                qr_login = await client.qr_login()
-                qr = qrcode.QRCode()
-                qr.add_data(qr_login.url)
-                qr.make(fit=True)
-                qr_img = qr.make_image(fill_color="black", back_color="white")
-                qr_path = f"qr_{phone}.png"
-                try:
-                    qr_img.save(qr_path)
-                    if qr_callback:
-                        await qr_callback(qr_path)
-                except Exception as e:
-                    if error_callback:
-                        await error_callback(f"Failed to save QR code: {e}")
-                    logger.error(f"Failed to save QR code for {phone}: {e}")
-                    return False
-                try:
-                    await qr_login.wait(timeout=60)
-                except SessionPasswordNeededError:
-                    if error_callback:
-                        error_callback("2FA password required")
-                    logger.error(f"2FA password required for {phone}")
-                    return False
-                except asyncio.TimeoutError:
-                    if error_callback:
-                        error_callback("QR login timeout")
-                    logger.error(f"QR login timeout for {phone}")
-                    return False
-                except PhoneNumberInvalidError:
-                    if error_callback:
-                        error_callback("Invalid phone number")
-                    logger.error(f"Invalid phone number: {phone}")
-                    return False
-                finally:
-                    if os.path.exists(qr_path):
-                        os.remove(qr_path)
-            user = await client.get_me()
-            if user_id not in self.user_states:
-                self.user_states[user_id] = UserState()
-            self.user_states[user_id].clients[phone] = {'client': client, 'user': user}
-            logger.info(f"Account {phone} connected successfully for user {user_id}")
-            return True
-        except Exception as e:
-            if error_callback:
-                error_callback(f"Failed to connect: {e}")
-            logger.error(f"Failed to connect {phone}: {e}")
-            return False
+async def connect_account(self, phone, user_id, qr_callback=None, error_callback=None):
+    if not phone.startswith('+'):
+        if error_callback:
+            await error_callback(f"Invalid phone format: {phone}")
+        logger.error(f"Invalid phone format: {phone}")
+        return False
+    try:
+        if phone in self.clients:
+            client = self.clients[phone]
+        else:
+            client = TelegramClient(MemorySession(), API_ID, API_HASH)
+            self.clients[phone] = client
+        await client.connect()
+        if not await client.is_user_authorized():
+            qr_login = await client.qr_login()
+            qr = qrcode.QRCode()
+            qr.add_data(qr_login.url)
+            qr.make(fit=True)
+            qr_img = qr.make_image(fill_color="black", back_color="white")
+            qr_path = f"qr_{phone}.png"
+            try:
+                qr_img.save(qr_path)
+                if qr_callback:
+                    await qr_callback(qr_path)
+            except Exception as e:
+                if error_callback:
+                    await error_callback(f"Failed to save QR code: {e}")
+                logger.error(f"Failed to save QR code for {phone}: {e}")
+                return False
+            try:
+                await qr_login.wait(timeout=60)
+            except SessionPasswordNeededError:
+                if error_callback:
+                    await error_callback("2FA password required")
+                logger.error(f"2FA password required for {phone}")
+                return False
+            except asyncio.TimeoutError:
+                if error_callback:
+                    await error_callback("QR login timeout")
+                logger.error(f"QR login timeout for {phone}")
+                return False
+            except PhoneNumberInvalidError:
+                if error_callback:
+                    await error_callback("Invalid phone number")
+                logger.error(f"Invalid phone number: {phone}")
+                return False
+            finally:
+                if os.path.exists(qr_path):
+                    os.remove(qr_path)
+        user = await client.get_me()
+        if user_id not in self.user_states:
+            self.user_states[user_id] = UserState()
+        self.user_states[user_id].clients[phone] = {'client': client, 'user': user}
+        logger.info(f"Account {phone} connected successfully for user {user_id}")
+        return True
+    except Exception as e:
+        if error_callback:
+            await error_callback(f"Failed to connect: {e}")
+        logger.error(f"Failed to connect {phone}: {e}")
+        return False
+
 
     async def load_chats(self, client, phone):
         chats = []
