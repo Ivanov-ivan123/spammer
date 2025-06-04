@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 EMOJIS = ["🙂", "🙃", "😉", "😊", "😇", "🤗", "😎", "🤩", "🤔", "😺"]
 
-load_dotenv()  # Загружает данные из .env
 
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
