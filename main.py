@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 EMOJIS = ["🙂", "🙃", "😉", "😊", "😇", "🤗", "😎", "🤩", "🤔", "😺"]
 
 
+
+print("API_ID:", os.getenv("API_ID"))
+print("API_HASH:", os.getenv("API_HASH"))
+print("API_TOKEN:", os.getenv("API_TOKEN"))
+
+
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 API_TOKEN = os.getenv("API_TOKEN")

@@ -1,6 +1,3 @@
-# Игнорировать env файл
-.env
-
 # Python кэш
 __pycache__/
 *.py[cod]
