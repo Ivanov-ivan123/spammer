@@ -3,7 +3,6 @@ import asyncio
 import qrcode
 import os
 import random
-from dotenv import load_dotenv
 from telethon import TelegramClient
 from telethon.sessions import MemorySession
 from telethon.errors import SessionPasswordNeededError, PhoneNumberInvalidError, FloodWaitError
