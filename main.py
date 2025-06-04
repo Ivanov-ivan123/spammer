@@ -19,12 +19,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 EMOJIS = ["🙂", "🙃", "😉", "😊", "😇", "🤗", "😎", "🤩", "🤔", "😺"]
-API_ID = int(os.environ['API_ID'])
-API_HASH = os.environ['API_HASH']
-API_TOKEN = os.environ['API_TOKEN']
-# API_ID = 20121768
-# API_HASH = '5d579eeab57590fd3e68c6e68ba1249c'
-# API_TOKEN = os.environ['7725000275:AAGfzf_M0sj8RqQEKKsg6sUUybxBpG0A_tA']
+# API_ID = int(os.environ['API_ID'])
+# API_HASH = os.environ['API_HASH']
+# API_TOKEN = os.environ['API_TOKEN']
+API_ID = 20121768
+API_HASH = '5d579eeab57590fd3e68c6e68ba1249c'
+API_TOKEN = '7725000275:AAGfzf_M0sj8RqQEKKsg6sUUybxBpG0A_tA'
 
 class UserState:
     def __init__(self):
