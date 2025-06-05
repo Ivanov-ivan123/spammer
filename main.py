@@ -16,15 +16,15 @@ from typing import Dict, List
 
 # ===== НАСТРОЙКИ ===== #
 # ЗАМЕНИТЕ ЭТИ ДАННЫЕ НА СВОИ!
-API_TOKEN = '7136878943:AAHAKaLe0X1ky4J0we7Y3iQeATmYoUOQ2Wo'  # Получить у @BotFather
-API_ID = 10622852             # Получить на my.telegram.org
-API_HASH = 'b92d19a058e1df6b820c44821a140da2'    # Получить на my.telegram.org
-ADMIN_ID = 585870031         # Ваш ID в Telegram (можно узнать у @userinfobot)
+# API_TOKEN = '7136878943:AAHAKaLe0X1ky4J0we7Y3iQeATmYoUOQ2Wo'  # Получить у @BotFather
+# API_ID = 10622852             # Получить на my.telegram.org
+# API_HASH = 'b92d19a058e1df6b820c44821a140da2'    # Получить на my.telegram.org
+# ADMIN_ID = 585870031         # Ваш ID в Telegram (можно узнать у @userinfobot)
 
-# API_ID = int(os.getenv("API_ID"))
-# API_HASH = os.getenv("API_HASH")
-# API_TOKEN = os.getenv("API_TOKEN")
-# ADMIN_ID = int(os.getenv("ADMIN_ID"))
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
+API_TOKEN = os.getenv("API_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
 # ===================== #
 
 # Настройка логгирования
