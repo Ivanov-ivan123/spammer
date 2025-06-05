@@ -193,6 +193,7 @@ def create_main_menu() -> InlineKeyboardMarkup:
         InlineKeyboardButton("❓ Помощь", callback_data="help"),
         InlineKeyboardButton("📢 О боте", callback_data="about")
     )
+    keyboard.add(InlineKeyboardButton("🔄 Сбросить все настройки", callback_data="reset_all"))
     return keyboard
 
 async def spam_task(user_id: int):
@@ -698,7 +699,7 @@ async def process_about(callback_query: types.CallbackQuery):
         "- Настройка задержки\n"
         "- Выбор нескольких чатов\n"
         "- Простое управление\n"
-        "- Разработчик @mxpon\n\n"
+        "- Разработчик @fearinboy\n\n"
         "Версия: 1.0"
     )
     
@@ -728,6 +729,31 @@ async def process_settings(callback_query: types.CallbackQuery):
     )
     await bot.answer_callback_query(callback_query.id)
 
+
+@dp.callback_query_handler(lambda c: c.data == 'reset_all')
+async def process_reset_all(callback_query: types.CallbackQuery):
+    """Обработчик кнопки 'Сбросить все настройки'"""
+    user_id = callback_query.from_user.id
+    if user_id not in users_data:
+        await bot.answer_callback_query(callback_query.id, "Ошибка: пользователь не найден")
+        return
+
+    # Сброс всех настроек пользователя
+    users_data[user_id] = UserData()
+    users_data[user_id].user_id = user_id
+    users_data[user_id].username = callback_query.from_user.username
+    users_data[user_id].first_name = callback_query.from_user.first_name
+    users_data[user_id].last_name = callback_query.from_user.last_name
+    users_data[user_id].telethon_session = f"sessions/{user_id}.session"
+
+    await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text="✅ Все настройки сброшены.",
+        reply_markup=create_main_menu()
+    )
+    await bot.answer_callback_query(callback_query.id)
+
 @dp.message_handler()
 async def any_message(message: types.Message):
     """Обработчик любых других сообщений"""
@@ -735,6 +761,8 @@ async def any_message(message: types.Message):
         "Используйте меню для управления ботом:",
         reply_markup=create_main_menu()
     )
+
+
 
 # ===== ЗАПУСК БОТА ===== #
 
