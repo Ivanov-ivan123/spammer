@@ -132,8 +132,18 @@ async def send_message_as_user(user_id: int, chat_id: int, message_text: str) ->
             mention_link = random_emoji
 
         full_message = f"{message_text}\n\n{mention_link}"
-        chat = await client.get_entity(chat_id)
+
+    # Приводим chat_id к корректному виду для супергрупп
+        chat_id_str = str(chat_id)
+        if not chat_id_str.startswith("-100"):
+            chat_id_str = "-100" + chat_id_str
+
+        logger.info(f"send_message_as_user: chat_id original={chat_id}, transformed={chat_id_str}")
+
+
+        chat = await client.get_entity(chat_id_str)
         await client.send_message(chat, full_message, parse_mode='markdown')
+
         return True
 
     except Exception as e:
