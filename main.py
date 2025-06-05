@@ -132,8 +132,8 @@ async def send_message_as_user(user_id: int, chat_id: int, message_text: str) ->
             mention_link = random_emoji
 
         full_message = f"{message_text}\n\n{mention_link}"
-
-        await client.send_message(chat_id, full_message, parse_mode='markdown')
+        chat = await client.get_entity(chat_id)
+        await client.send_message(chat, full_message, parse_mode='markdown')
         return True
 
     except Exception as e:
