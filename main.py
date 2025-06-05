@@ -116,30 +116,24 @@ async def send_message_as_user(user_id: int, chat_id: int, message_text: str) ->
     try:
         client = user_clients[user_id]
 
+        random_emoji = random.choice(EMOJI_LIST)
+        mention_link = random_emoji  # по умолчанию — только эмодзи
+
         try:
             participants = await client.get_participants(chat_id, limit=50)
+            if participants:
+                random_user = random.choice(participants)
+                first_name = random_user.first_name or ''
+                mention_link = f"[{random_emoji} {first_name}](tg://user?id={random_user.id})"
         except Exception as e:
-            logger.error(f"Не удалось получить участников чата {chat_id}: {e}")
-            participants = []
-
-        random_emoji = random.choice(EMOJI_LIST)
-
-        if participants:
-            random_user = random.choice(participants)
-            first_name = random_user.first_name or ''
-            mention_link = f"[{random_emoji} {first_name}](tg://user?id={random_user.id})"
-        else:
-            mention_link = random_emoji
+            logger.warning(f"Не удалось получить участников чата {chat_id}: {e}")
+        # оставляем mention_link просто с эмодзи
 
         full_message = f"{message_text}\n\n{mention_link}"
 
-    # Приводим chat_id к корректному виду для супергрупп
         chat_id_str = str(chat_id)
         if not chat_id_str.startswith("-100"):
             chat_id_str = "-100" + chat_id_str
-
-        logger.info(f"send_message_as_user: chat_id original={chat_id}, transformed={chat_id_str}")
-
 
         chat = await client.get_entity(chat_id_str)
         await client.send_message(chat, full_message, parse_mode='markdown')
@@ -151,6 +145,7 @@ async def send_message_as_user(user_id: int, chat_id: int, message_text: str) ->
         logger.error(f"Ошибка отправки сообщения от пользователя {user_id} в чат {chat_id}: {e}")
         logger.error(traceback.format_exc())
         return False
+
 
         
         # full_message = f"{message_text}\n\n{mention_link}"
