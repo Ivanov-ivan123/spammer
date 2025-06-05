@@ -16,15 +16,15 @@ from typing import Dict, List
 
 # ===== НАСТРОЙКИ ===== #
 # ЗАМЕНИТЕ ЭТИ ДАННЫЕ НА СВОИ!
-# API_TOKEN = '7902608004:AAETHP1SM_r1demggGrY_aHtzkyos5Fz0Dc'  # Получить у @BotFather
-# API_ID = 10622852             # Получить на my.telegram.org
-# API_HASH = 'b92d19a058e1df6b820c44821a140da2'    # Получить на my.telegram.org
-# ADMIN_ID = 585870031         # Ваш ID в Telegram (можно узнать у @userinfobot)
+API_TOKEN = '7136878943:AAHAKaLe0X1ky4J0we7Y3iQeATmYoUOQ2Wo'  # Получить у @BotFather
+API_ID = 10622852             # Получить на my.telegram.org
+API_HASH = 'b92d19a058e1df6b820c44821a140da2'    # Получить на my.telegram.org
+ADMIN_ID = 585870031         # Ваш ID в Telegram (можно узнать у @userinfobot)
 
-API_ID = int(os.getenv("API_ID"))
-API_HASH = os.getenv("API_HASH")
-API_TOKEN = os.getenv("API_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
+# API_ID = int(os.getenv("API_ID"))
+# API_HASH = os.getenv("API_HASH")
+# API_TOKEN = os.getenv("API_TOKEN")
+# ADMIN_ID = int(os.getenv("ADMIN_ID"))
 # ===================== #
 
 # Настройка логгирования
@@ -117,25 +117,24 @@ async def send_message_as_user(user_id: int, chat_id: int, message_text: str) ->
         client = user_clients[user_id]
 
         random_emoji = random.choice(EMOJI_LIST)
-        mention_link = random_emoji  # по умолчанию — только эмодзи
+        mention_link = random_emoji
 
         try:
             participants = await client.get_participants(chat_id, limit=50)
             if participants:
                 random_user = random.choice(participants)
-                first_name = random_user.first_name or ''
-                mention_link = f"[{random_emoji} {first_name}](tg://user?id={random_user.id})"
+                mention_link = f"[{random_emoji}](tg://user?id={random_user.id})"
         except Exception as e:
             logger.warning(f"Не удалось получить участников чата {chat_id}: {e}")
-        # оставляем mention_link просто с эмодзи
 
         full_message = f"{message_text}\n\n{mention_link}"
 
-        chat_id_str = str(chat_id)
-        if not chat_id_str.startswith("-100"):
-            chat_id_str = "-100" + chat_id_str
+    # НЕ меняем chat_id
+        try:
+            chat = await client.get_entity(chat_id)
+        except Exception:
+            chat = chat_id  # fallback — просто id, если не нашёл
 
-        chat = await client.get_entity(chat_id_str)
         await client.send_message(chat, full_message, parse_mode='markdown')
 
         return True
