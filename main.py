@@ -700,7 +700,8 @@ async def process_about(callback_query: types.CallbackQuery):
         "- Отправка от вашего имени\n"
         "- Настройка задержки\n"
         "- Выбор нескольких чатов\n"
-        "- Простое управление\n\n"
+        "- Простое управление\n"
+        "- Разработчик @mxpon\n\n"
         "Версия: 1.0"
     )
     
@@ -725,7 +726,7 @@ async def process_settings(callback_query: types.CallbackQuery):
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
         text="⚙️ Настройки:\n\n"
-             "Здесь вы можете настроить параметры бота (в разработке).",
+            "Нет доступных настроек.\n",
         reply_markup=keyboard
     )
     await bot.answer_callback_query(callback_query.id)
