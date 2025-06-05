@@ -115,7 +115,7 @@ async def send_message_as_user(user_id: int, chat_id: int, message_text: str) ->
     
     try:
         client = user_clients[user_id]
-    
+
         try:
             participants = await client.get_participants(chat_id, limit=50)
         except Exception as e:
@@ -123,10 +123,6 @@ async def send_message_as_user(user_id: int, chat_id: int, message_text: str) ->
             participants = []
 
         random_emoji = random.choice(EMOJI_LIST)
-        
-        # # Получаем случайного участника чата
-        # participants = await client.get_participants(chat_id, limit=50)
-        # random_emoji = random.choice(EMOJI_LIST)
 
         if participants:
             random_user = random.choice(participants)
@@ -137,18 +133,15 @@ async def send_message_as_user(user_id: int, chat_id: int, message_text: str) ->
 
         full_message = f"{message_text}\n\n{mention_link}"
 
-        try:
-            await client.send_message(chat_id, full_message, parse_mode='markdown')
-            return True
-        except Exception as e:
-            logger.error(f"Ошибка отправки сообщения от пользователя {user_id} в чат {chat_id}: {e}")
-            return False
-        
+        await client.send_message(chat_id, full_message, parse_mode='markdown')
+        return True
+
     except Exception as e:
         import traceback
-        logger.error(f"Фатальная ошибка в send_message_as_user: {e}")
+        logger.error(f"Ошибка отправки сообщения от пользователя {user_id} в чат {chat_id}: {e}")
         logger.error(traceback.format_exc())
         return False
+
         
         # full_message = f"{message_text}\n\n{mention_link}"
         # await client.send_message(chat_id, full_message, parse_mode='markdown')
