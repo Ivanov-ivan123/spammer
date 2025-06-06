@@ -15,17 +15,16 @@ import random
 from typing import Dict, List
 
 # ===== НАСТРОЙКИ ===== #
-# ЗАМЕНИТЕ ЭТИ ДАННЫЕ НА СВОИ!
-# API_TOKEN = '7136878943:AAHAKaLe0X1ky4J0we7Y3iQeATmYoUOQ2Wo'  # Получить у @BotFather
-# API_ID = 10622852             # Получить на my.telegram.org
-# API_HASH = 'b92d19a058e1df6b820c44821a140da2'    # Получить на my.telegram.org
-# ADMIN_ID = 585870031         # Ваш ID в Telegram (можно узнать у @userinfobot)
+# API_ID = 28341794
+# API_HASH = '7a7c1f87b7a9e040efa988921bbae453'
+# API_TOKEN = '7505558708:AAHtk-1aYQWjuVyrDoVc0rwwKUGYH7UmmkE'
+# ADMIN_ID = 1483771498
+# ===================== #
 
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 API_TOKEN = os.getenv("API_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
-# ===================== #
 
 # Настройка логгирования
 logging.basicConfig(
@@ -34,7 +33,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Создаем папку для сессий, если ее нет
+# Создаем папку для сессий
 os.makedirs('sessions', exist_ok=True)
 
 # Инициализация бота и диспетчера
@@ -45,10 +44,10 @@ dp = Dispatcher(bot, storage=storage)
 # Эмодзи для скрытой отметки
 EMOJI_LIST = ['👀', '🤖', '✨', '🌟', '💫', '⚡', '🔥', '💥', '🕵️', '🔍', '🔎']
 
-# Структуры данных для хранения информации
-users_data = {}      # Данные пользователей
-active_spams = {}    # Активные рассылки
-user_clients = {}    # Telethon клиенты пользователей
+# Структуры данных
+users_data = {}
+active_spams = {}
+user_clients = {}
 
 # Класс для хранения состояний
 class Form(StatesGroup):
@@ -59,7 +58,7 @@ class Form(StatesGroup):
     waiting_for_delay = State()
     waiting_for_chats = State()
 
-# Класс для хранения данных пользователя
+# Класс для данных пользователя
 class UserData:
     def __init__(self):
         self.user_id = None
@@ -69,7 +68,7 @@ class UserData:
         self.chats = []
         self.selected_chats = []
         self.message = None
-        self.delay = 60  # дефолтная задержка в секундах
+        self.delay = 60
         self.is_active = False
         self.phone = None
         self.telethon_session = None
@@ -78,14 +77,11 @@ class UserData:
 # ===== ОСНОВНЫЕ ФУНКЦИИ ===== #
 
 async def get_user_chats(user_id: int) -> List[Dict]:
-    """Получаем список чатов пользователя через Telethon"""
     if user_id not in user_clients or not user_clients[user_id].is_connected():
         return []
-    
     try:
         client = user_clients[user_id]
         chats = []
-        
         result = await client(GetDialogsRequest(
             offset_date=None,
             offset_id=0,
@@ -93,7 +89,6 @@ async def get_user_chats(user_id: int) -> List[Dict]:
             limit=200,
             hash=0
         ))
-        
         for chat in result.chats:
             if hasattr(chat, 'title') and (hasattr(chat, 'megagroup') and chat.megagroup):
                 chats.append({
@@ -102,23 +97,18 @@ async def get_user_chats(user_id: int) -> List[Dict]:
                     "type": "supergroup",
                     "access_hash": chat.access_hash
                 })
-        
         return chats
     except Exception as e:
         logger.error(f"Ошибка получения чатов для пользователя {user_id}: {e}")
         return []
 
 async def send_message_as_user(user_id: int, chat_id: int, message_text: str) -> bool:
-    """Отправляем сообщение от имени пользователя"""
     if user_id not in user_clients or not user_clients[user_id].is_connected():
         return False
-    
     try:
         client = user_clients[user_id]
-
         random_emoji = random.choice(EMOJI_LIST)
         mention_link = random_emoji
-
         try:
             participants = await client.get_participants(chat_id, limit=50)
             if participants:
@@ -126,49 +116,18 @@ async def send_message_as_user(user_id: int, chat_id: int, message_text: str) ->
                 mention_link = f"[{random_emoji}](tg://user?id={random_user.id})"
         except Exception as e:
             logger.warning(f"Не удалось получить участников чата {chat_id}: {e}")
-
         full_message = f"{message_text}\n\n{mention_link}"
-
-    # НЕ меняем chat_id
         try:
             chat = await client.get_entity(chat_id)
         except Exception:
-            chat = chat_id  # fallback — просто id, если не нашёл
-
+            chat = chat_id
         await client.send_message(chat, full_message, parse_mode='markdown')
-
         return True
-
     except Exception as e:
-        import traceback
         logger.error(f"Ошибка отправки сообщения от пользователя {user_id} в чат {chat_id}: {e}")
-        logger.error(traceback.format_exc())
         return False
 
-
-        
-        # full_message = f"{message_text}\n\n{mention_link}"
-        # await client.send_message(chat_id, full_message, parse_mode='markdown')
-        # return True
-    # except Exception as e:
-    #     # Добавляем случайный эмодзи и упоминание
-    #     random_emoji = random.choice(EMOJI_LIST)
-    #     # full_message = f"{message_text}\n\n{random_emoji} {mention}"
-    #     mention_link = f"[{random_emoji} {random_user.first_name or ''}](tg://user?id={random_user.id})"
-    #     full_message = f"{message_text}\n\n{mention_link}"
-    #     full_message = str(full_message)
-        
-    #     await client.send_message(chat_id, full_message, parse_mode='markdown')
-    #     return True
-    
-    # except Exception as e:
-    #     import traceback
-    #     logger.error(f"Ошибка отправки сообщения от пользователя {user_id} в чат {chat_id}: {e}")
-    #     logger.error(traceback.format_exc())
-    #     return False
-
 def create_chats_keyboard(chats: List[Dict], selected_chats: List[int] = []) -> InlineKeyboardMarkup:
-    """Создаем клавиатуру с выбором чатов"""
     keyboard = InlineKeyboardMarkup(row_width=1)
     for chat in chats:
         chat_id = chat['id']
@@ -183,7 +142,6 @@ def create_chats_keyboard(chats: List[Dict], selected_chats: List[int] = []) -> 
     return keyboard
 
 def create_main_menu() -> InlineKeyboardMarkup:
-    """Создаем главное меню"""
     keyboard = InlineKeyboardMarkup(row_width=2)
     keyboard.add(
         InlineKeyboardButton("📝 Мои рассылки", callback_data="my_spams"),
@@ -193,34 +151,27 @@ def create_main_menu() -> InlineKeyboardMarkup:
         InlineKeyboardButton("❓ Помощь", callback_data="help"),
         InlineKeyboardButton("📢 О боте", callback_data="about")
     )
-    keyboard.add(InlineKeyboardButton("🔄 Сбросить все настройки", callback_data="reset_all"))
+    keyboard.add(InlineKeyboardButton("🗑 Сбросить все", callback_data="reset_all"))
     return keyboard
 
 async def spam_task(user_id: int):
-    """Задача для выполнения рассылки"""
     if user_id not in users_data:
         return
-    
     user_data = users_data[user_id]
-    
     while user_data.is_active:
         try:
             for chat_id in user_data.selected_chats:
                 if not user_data.is_active:
                     break
-                
-                
                 try:
                     success = await send_message_as_user(user_id, chat_id, user_data.message)
                     if not success:
                         logger.error(f"Не удалось отправить сообщение в чат {chat_id} для пользователя {user_id}")
                 except Exception as e:
                     logger.error(f"Ошибка отправки в чат {chat_id}: {e}")
-                
-                await asyncio.sleep(1)  # Задержка между сообщениями
-            
+                await asyncio.sleep(1)
             if user_data.is_active:
-                await asyncio.sleep(user_data.delay)  # Основная задержка
+                await asyncio.sleep(user_data.delay)
         except Exception as e:
             logger.error(f"Ошибка в задаче рассылки для пользователя {user_id}: {e}")
             await asyncio.sleep(10)
@@ -229,9 +180,7 @@ async def spam_task(user_id: int):
 
 @dp.message_handler(commands=['start'])
 async def cmd_start(message: types.Message):
-    """Обработчик команды /start"""
     user_id = message.from_user.id
-    
     if user_id not in users_data:
         users_data[user_id] = UserData()
         users_data[user_id].user_id = user_id
@@ -239,7 +188,6 @@ async def cmd_start(message: types.Message):
         users_data[user_id].first_name = message.from_user.first_name
         users_data[user_id].last_name = message.from_user.last_name
         users_data[user_id].telethon_session = f"sessions/{user_id}.session"
-        
         await Form.waiting_for_phone.set()
         await message.answer(
             "👋 Добро пожаловать в бота-рассыльщика!\n\n"
@@ -247,7 +195,6 @@ async def cmd_start(message: types.Message):
             "Отправьте ваш номер телефона в формате +79123456789:",
             reply_markup=types.ReplyKeyboardRemove()
         )
-        
         try:
             await bot.send_message(
                 ADMIN_ID,
@@ -265,20 +212,15 @@ async def cmd_start(message: types.Message):
 
 @dp.message_handler(state=Form.waiting_for_phone)
 async def process_phone(message: types.Message, state: FSMContext):
-    """Обработчик ввода номера телефона"""
     user_id = message.from_user.id
     phone = message.text
-    
     if not phone.startswith('+'):
         await message.answer("❌ Неверный формат номера. Введите номер в формате +79123456789:")
         return
-    
     users_data[user_id].phone = phone
-    
     try:
         client = TelegramClient(StringSession(), API_ID, API_HASH, device_model="BotSpammer")
         await client.connect()
-        
         sent_code = await client.send_code_request(phone)
         await state.update_data(
             phone_code_hash=sent_code.phone_code_hash,
@@ -286,7 +228,6 @@ async def process_phone(message: types.Message, state: FSMContext):
             phone=phone
         )
         await Form.waiting_for_code.set()
-        
         await message.answer(
             "📲 Код подтверждения отправлен. Введите код в формате 1-2-3-4-5:",
             reply_markup=types.ReplyKeyboardRemove()
@@ -298,23 +239,18 @@ async def process_phone(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=Form.waiting_for_code)
 async def process_code(message: types.Message, state: FSMContext):
-    """Обработчик ввода кода подтверждения"""
     user_id = message.from_user.id
     code = message.text.replace('-', '')
-    
     if not code.isdigit() or len(code) != 5:
         await message.answer("❌ Неверный формат кода. Введите 5 цифр в формате 1-2-3-4-5:")
         return
-    
     data = await state.get_data()
     session_str = data.get('session')
     phone = data.get('phone')
     phone_code_hash = data.get('phone_code_hash')
-    
     try:
         client = TelegramClient(StringSession(session_str), API_ID, API_HASH)
         await client.connect()
-        
         try:
             await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
         except Exception as e:
@@ -324,29 +260,12 @@ async def process_code(message: types.Message, state: FSMContext):
                 await message.answer("🔐 Введите пароль двухэтапной аутентификации:")
                 return
             raise e
-        
         session_path = f"sessions/{user_id}.session"
         with open(session_path, "w") as f:
             f.write(client.session.save())
-
-        # try:
-        #     await client.sign_in(
-        #         phone=users_data[user_id].phone,
-        #         code=code,
-        #         phone_code_hash=phone_code_hash
-        #     )
-        # except Exception as e:
-        #     if "two-steps" in str(e):
-        #         await Form.waiting_for_password.set()
-        #         await message.answer("🔐 Введите пароль двухэтапной аутентификации:")
-        #         return
-        #     else:
-        #         raise e
-        
         user_clients[user_id] = client
         users_data[user_id].telethon_client = client
         users_data[user_id].chats = await get_user_chats(user_id)
-        
         await state.finish()
         await message.answer(
             "✅ Авторизация успешна! Теперь вы можете начать рассылку.",
@@ -363,26 +282,19 @@ async def process_password(message: types.Message, state: FSMContext):
     password = message.text
     data = await state.get_data()
     session_str = data.get('session')
-
     try:
         client = TelegramClient(StringSession(session_str), API_ID, API_HASH)
         await client.connect()
-
         await client.sign_in(password=password)
-
-        # Успешная авторизация — сохраняем!
         session_path = f"sessions/{user_id}.session"
         with open(session_path, "w") as f:
             f.write(client.session.save())
-
         user_clients[user_id] = client
         users_data[user_id].telethon_client = client
         users_data[user_id].chats = await get_user_chats(user_id)
-
         await state.finish()
         await message.answer("✅ Авторизация успешна! Теперь вы можете начать рассылку.",
                             reply_markup=create_main_menu())
-
     except Exception as e:
         logger.error(f"Ошибка входа с паролем для {user_id}: {e}")
         await message.answer(f"❌ Ошибка: {str(e)}. Попробуйте снова /start")
@@ -390,21 +302,16 @@ async def process_password(message: types.Message, state: FSMContext):
 
 @dp.callback_query_handler(lambda c: c.data == 'my_spams')
 async def process_my_spams(callback_query: types.CallbackQuery):
-    """Обработчик кнопки 'Мои рассылки'"""
     user_id = callback_query.from_user.id
     if user_id not in users_data:
         await bot.answer_callback_query(callback_query.id, "Сначала зарегистрируйтесь через /start")
         return
-    
     user_data = users_data[user_id]
-    
     status = "🟢 Активна" if user_data.is_active else "🔴 Неактивна"
     button = InlineKeyboardButton("🛑 Остановить", callback_data="stop_spam") if user_data.is_active else InlineKeyboardButton("🚀 Начать новую", callback_data="new_spam")
-    
     keyboard = InlineKeyboardMarkup()
     keyboard.add(button)
     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu"))
-    
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -419,18 +326,14 @@ async def process_my_spams(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data == 'new_spam')
 async def process_new_spam(callback_query: types.CallbackQuery):
-    """Обработчик кнопки 'Новая рассылка'"""
     user_id = callback_query.from_user.id
     if user_id not in users_data:
         await bot.answer_callback_query(callback_query.id, "Сначала зарегистрируйтесь через /start")
         return
-    
     users_data[user_id].selected_chats = []
-    
     keyboard = InlineKeyboardMarkup(row_width=1)
     keyboard.add(InlineKeyboardButton("📝 Ввести сообщение", callback_data="enter_message"))
     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="my_spams"))
-    
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -445,7 +348,6 @@ async def process_new_spam(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data == 'enter_message')
 async def process_enter_message(callback_query: types.CallbackQuery, state: FSMContext):
-    """Обработчик кнопки 'Ввести сообщение'"""
     await Form.waiting_for_message.set()
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
@@ -456,22 +358,17 @@ async def process_enter_message(callback_query: types.CallbackQuery, state: FSMC
 
 @dp.message_handler(state=Form.waiting_for_message)
 async def process_message_input(message: types.Message, state: FSMContext):
-    """Обработчик ввода сообщения для рассылки"""
     user_id = message.from_user.id
     if user_id not in users_data:
         await state.finish()
         return await message.answer("Сначала зарегистрируйтесь через /start")
-    
     users_data[user_id].message = message.text
     await state.finish()
-    
     await Form.waiting_for_chats.set()
     users_data[user_id].chats = await get_user_chats(user_id)
-    
     if not users_data[user_id].chats:
         await message.answer("❌ У вас нет доступных чатов для рассылки.")
         return
-    
     keyboard = create_chats_keyboard(users_data[user_id].chats)
     await message.answer(
         "✅ Сообщение сохранено. Выберите чаты для рассылки:",
@@ -480,20 +377,16 @@ async def process_message_input(message: types.Message, state: FSMContext):
 
 @dp.callback_query_handler(lambda c: c.data.startswith('chat_'), state=Form.waiting_for_chats)
 async def process_chat_selection(callback_query: types.CallbackQuery, state: FSMContext):
-    """Обработчик выбора чатов"""
     user_id = callback_query.from_user.id
     if user_id not in users_data:
         await bot.answer_callback_query(callback_query.id, "Ошибка: пользователь не найден")
         return
-    
     chat_id = int(callback_query.data.split('_')[1])
     user_data = users_data[user_id]
-    
     if chat_id in user_data.selected_chats:
         user_data.selected_chats.remove(chat_id)
     else:
         user_data.selected_chats.append(chat_id)
-    
     keyboard = create_chats_keyboard(user_data.chats, user_data.selected_chats)
     await bot.edit_message_reply_markup(
         chat_id=callback_query.message.chat.id,
@@ -504,24 +397,18 @@ async def process_chat_selection(callback_query: types.CallbackQuery, state: FSM
 
 @dp.callback_query_handler(lambda c: c.data == 'start_spam', state=Form.waiting_for_chats)
 async def process_start_spam(callback_query: types.CallbackQuery, state: FSMContext):
-    """Обработчик кнопки 'Начать рассылку'"""
     user_id = callback_query.from_user.id
     if user_id not in users_data:
         await bot.answer_callback_query(callback_query.id, "Ошибка: пользователь не найден")
         return
-    
     user_data = users_data[user_id]
-    
     if not user_data.selected_chats:
         await bot.answer_callback_query(callback_query.id, "Выберите хотя бы один чат!")
         return
-    
     if not user_data.message:
         await bot.answer_callback_query(callback_query.id, "Сообщение не задано!")
         return
-    
     await state.finish()
-    
     keyboard = InlineKeyboardMarkup()
     keyboard.add(
         InlineKeyboardButton("30 сек", callback_data="delay_30"),
@@ -529,7 +416,6 @@ async def process_start_spam(callback_query: types.CallbackQuery, state: FSMCont
         InlineKeyboardButton("5 мин", callback_data="delay_300")
     )
     keyboard.add(InlineKeyboardButton("Другое", callback_data="custom_delay"))
-    
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -540,13 +426,12 @@ async def process_start_spam(callback_query: types.CallbackQuery, state: FSMCont
 
 @dp.callback_query_handler(lambda c: c.data.startswith('delay_') or c.data == 'custom_delay', state='*')
 async def process_delay_selection(callback_query: types.CallbackQuery, state: FSMContext):
-    """Обработчик выбора задержки"""
     user_id = callback_query.from_user.id
     if user_id not in users_data:
         await bot.answer_callback_query(callback_query.id, "Ошибка: пользователь не найден")
         return
-    
     if callback_query.data == 'custom_delay':
+        await Form.waiting_for_delay.set()
         await bot.edit_message_text(
             chat_id=callback_query.message.chat.id,
             message_id=callback_query.message.message_id,
@@ -554,52 +439,40 @@ async def process_delay_selection(callback_query: types.CallbackQuery, state: FS
         )
         await bot.answer_callback_query(callback_query.id)
         return
-    
     delay = int(callback_query.data.split('_')[1])
     users_data[user_id].delay = delay
-    
     await start_spamming(user_id, callback_query.message.message_id, callback_query.message.chat.id)
     await bot.answer_callback_query(callback_query.id)
 
 @dp.message_handler(state=Form.waiting_for_delay)
 async def process_custom_delay(message: types.Message, state: FSMContext):
-    """Обработчик ввода кастомной задержки"""
     user_id = message.from_user.id
     if user_id not in users_data:
         await state.finish()
         return await message.answer("Сначала зарегистрируйтесь через /start")
-    
     try:
         delay = int(message.text)
         if delay < 10:
             raise ValueError("Задержка должна быть не менее 10 секунд")
-        
         users_data[user_id].delay = delay
         await state.finish()
-        
         await start_spamming(user_id)
         await message.answer(f"✅ Рассылка запущена с задержкой {delay} секунд")
     except ValueError as e:
         await message.answer(f"❌ Ошибка: {str(e)}. Введите число секунд (минимум 10):")
 
 async def start_spamming(user_id: int, message_id: int = None, chat_id: int = None):
-    """Запускаем рассылку"""
     if user_id not in users_data:
         return
-    
     user_data = users_data[user_id]
     user_data.is_active = True
-    
     if user_id in active_spams:
         active_spams[user_id].cancel()
-    
     task = asyncio.create_task(spam_task(user_id))
     active_spams[user_id] = task
-    
     if message_id and chat_id:
         keyboard = InlineKeyboardMarkup()
         keyboard.add(InlineKeyboardButton("🛑 Остановить", callback_data="stop_spam"))
-        
         await bot.edit_message_text(
             chat_id=chat_id,
             message_id=message_id,
@@ -613,7 +486,6 @@ async def start_spamming(user_id: int, message_id: int = None, chat_id: int = No
     else:
         keyboard = InlineKeyboardMarkup()
         keyboard.add(InlineKeyboardButton("🛑 Остановить", callback_data="stop_spam"))
-        
         await bot.send_message(
             chat_id=user_id,
             text=f"🚀 Рассылка запущена!\n\n"
@@ -626,23 +498,18 @@ async def start_spamming(user_id: int, message_id: int = None, chat_id: int = No
 
 @dp.callback_query_handler(lambda c: c.data == 'stop_spam')
 async def process_stop_spam(callback_query: types.CallbackQuery):
-    """Обработчик остановки рассылки"""
     user_id = callback_query.from_user.id
     if user_id not in users_data:
         await bot.answer_callback_query(callback_query.id, "Ошибка: пользователь не найден")
         return
-    
     user_data = users_data[user_id]
     user_data.is_active = False
-    
     if user_id in active_spams:
         active_spams[user_id].cancel()
         del active_spams[user_id]
-    
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("🚀 Начать новую", callback_data="new_spam"))
     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu"))
-    
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -653,7 +520,6 @@ async def process_stop_spam(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data == 'back_to_menu')
 async def process_back_to_menu(callback_query: types.CallbackQuery):
-    """Обработчик возврата в меню"""
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -664,7 +530,6 @@ async def process_back_to_menu(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data == 'help')
 async def process_help(callback_query: types.CallbackQuery):
-    """Обработчик кнопки 'Помощь'"""
     help_text = (
         "📖 Помощь по боту-рассыльщику:\n\n"
         "1. Для начала работы нажмите /start\n"
@@ -676,10 +541,8 @@ async def process_help(callback_query: types.CallbackQuery):
         "🛑 Для остановки нажмите соответствующую кнопку\n\n"
         "⚠️ Не злоупотребляйте рассылкой"
     )
-    
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu"))
-    
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -690,7 +553,6 @@ async def process_help(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data == 'about')
 async def process_about(callback_query: types.CallbackQuery):
-    """Обработчик кнопки 'О боте'"""
     about_text = (
         "🤖 Бот-рассыльщик\n\n"
         "Отправляет сообщения в ваши чаты с заданной задержкой.\n\n"
@@ -702,10 +564,8 @@ async def process_about(callback_query: types.CallbackQuery):
         "- Разработчик @fearinboy\n\n"
         "Версия: 1.0"
     )
-    
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu"))
-    
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -716,90 +576,907 @@ async def process_about(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data == 'settings')
 async def process_settings(callback_query: types.CallbackQuery):
-    """Обработчик кнопки 'Настройки'"""
     keyboard = InlineKeyboardMarkup()
     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu"))
-    
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
         text="⚙️ Настройки:\n\n"
-            "Нет доступных настроек.\n",
+             "Нет доступных настроек.\n",
         reply_markup=keyboard
     )
     await bot.answer_callback_query(callback_query.id)
 
-
 @dp.callback_query_handler(lambda c: c.data == 'reset_all')
 async def process_reset_all(callback_query: types.CallbackQuery):
-    """Обработчик кнопки 'Сбросить все настройки'"""
     user_id = callback_query.from_user.id
     if user_id not in users_data:
         await bot.answer_callback_query(callback_query.id, "Ошибка: пользователь не найден")
         return
-
-    # Сброс всех настроек пользователя
+    # Останавливаем активные рассылки
+    if user_id in active_spams:
+        active_spams[user_id].cancel()
+        del active_spams[user_id]
+    # Отключаем и удаляем Telethon клиент
+    if user_id in user_clients:
+        try:
+            if user_clients[user_id].is_connected():
+                await user_clients[user_id].disconnect()
+        except Exception as e:
+            logger.error(f"Ошибка отключения клиента для {user_id}: {e}")
+        del user_clients[user_id]
+    # Удаляем файл сессии
+    session_path = f"sessions/{user_id}.session"
+    if os.path.exists(session_path):
+        try:
+            os.remove(session_path)
+        except Exception as e:
+            logger.error(f"Ошибка удаления файла сессии для {user_id}: {e}")
+    # Сбрасываем данные пользователя
+    del users_data[user_id]
+    # Создаем новое состояние, как при /start
     users_data[user_id] = UserData()
     users_data[user_id].user_id = user_id
     users_data[user_id].username = callback_query.from_user.username
     users_data[user_id].first_name = callback_query.from_user.first_name
     users_data[user_id].last_name = callback_query.from_user.last_name
     users_data[user_id].telethon_session = f"sessions/{user_id}.session"
-
-    await bot.edit_message_text(
-        chat_id=callback_query.message.chat.id,
-        message_id=callback_query.message.message_id,
-        text="✅ Все настройки сброшены.",
-        reply_markup=create_main_menu()
-    )
+    await Form.waiting_for_phone.set()
+    try:
+        await bot.edit_message_text(
+            chat_id=callback_query.message.chat.id,
+            message_id=callback_query.message.message_id,
+            text="🗑 Все настройки сброшены.\n\n"
+                 "Для работы требуется авторизация вашего аккаунта Telegram.\n"
+                 "Отправьте ваш номер телефона в формате +79123456789:",
+            reply_markup=None  # Explicitly clear the inline keyboard
+        )
+    except Exception as e:
+        logger.error(f"Ошибка редактирования сообщения для {user_id}: {e}")
+        await bot.send_message(
+            chat_id=callback_query.message.chat.id,
+            text="🗑 Все настройки сброшены.\n\n"
+                 "Для работы требуется авторизация вашего аккаунта Telegram.\n"
+                 "Отправьте ваш номер телефона в формате +79123456789:",
+            reply_markup=None
+        )
     await bot.answer_callback_query(callback_query.id)
 
 @dp.message_handler()
 async def any_message(message: types.Message):
-    """Обработчик любых других сообщений"""
     await message.answer(
         "Используйте меню для управления ботом:",
         reply_markup=create_main_menu()
     )
 
-
-
-# ===== ЗАПУСК БОТА ===== #
-
 async def on_startup(dp):
-    """Действия при запуске бота"""
     try:
         await bot.send_message(ADMIN_ID, "🤖 Бот запущен!")
     except:
         pass
 
 async def on_shutdown(dp):
-    """Действия при остановке бота"""
-    # Отключаем всех клиентов Telethon
     for user_id, client in user_clients.items():
         try:
             if client.is_connected():
                 await client.disconnect()
         except:
             pass
-    
-    # Останавливаем все рассылки
     for user_id in users_data:
         users_data[user_id].is_active = False
-    
     try:
         await bot.send_message(ADMIN_ID, "🛑 Бот выключен")
     except:
         pass
-    
     await dp.storage.close()
     await dp.storage.wait_closed()
 
+if __name__ == '__main__':
+    executor.start_polling(dp, on_startup=on_startup, on_shutdown=on_shutdown, skip_updates=True)
+
+
+# import asyncio
+# import logging
+# import os
+# from aiogram import Bot, Dispatcher, types
+# from aiogram.contrib.fsm_storage.memory import MemoryStorage
+# from aiogram.dispatcher import FSMContext
+# from aiogram.dispatcher.filters.state import State, StatesGroup
+# from aiogram.utils import executor
+# from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+# from telethon.sync import TelegramClient
+# from telethon.sessions import StringSession
+# from telethon.tl.functions.messages import GetDialogsRequest
+# from telethon.tl.types import InputPeerEmpty
+# import random
+# from typing import Dict, List
+
+# # ===== НАСТРОЙКИ ===== #
+# # ЗАМЕНИТЕ ЭТИ ДАННЫЕ НА СВОИ!
+# # API_TOKEN = '7136878943:AAHAKaLe0X1ky4J0we7Y3iQeATmYoUOQ2Wo'  # Получить у @BotFather
+# # API_ID = 10622852             # Получить на my.telegram.org
+# # API_HASH = 'b92d19a058e1df6b820c44821a140da2'    # Получить на my.telegram.org
+# # ADMIN_ID = 585870031         # Ваш ID в Telegram (можно узнать у @userinfobot)
+
+# API_ID = int(os.getenv("API_ID"))
+# API_HASH = os.getenv("API_HASH")
+# API_TOKEN = os.getenv("API_TOKEN")
+# ADMIN_ID = int(os.getenv("ADMIN_ID"))
+# # ===================== #
+
+# # Настройка логгирования
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+# )
+# logger = logging.getLogger(__name__)
+
+# # Создаем папку для сессий, если ее нет
+# os.makedirs('sessions', exist_ok=True)
+
+# # Инициализация бота и диспетчера
+# bot = Bot(token=API_TOKEN)
+# storage = MemoryStorage()
+# dp = Dispatcher(bot, storage=storage)
+
+# # Эмодзи для скрытой отметки
+# EMOJI_LIST = ['👀', '🤖', '✨', '🌟', '💫', '⚡', '🔥', '💥', '🕵️', '🔍', '🔎']
+
+# # Структуры данных для хранения информации
+# users_data = {}      # Данные пользователей
+# active_spams = {}    # Активные рассылки
+# user_clients = {}    # Telethon клиенты пользователей
+
+# # Класс для хранения состояний
+# class Form(StatesGroup):
+#     waiting_for_phone = State()
+#     waiting_for_code = State()
+#     waiting_for_password = State()
+#     waiting_for_message = State()
+#     waiting_for_delay = State()
+#     waiting_for_chats = State()
+
+# # Класс для хранения данных пользователя
+# class UserData:
+#     def __init__(self):
+#         self.user_id = None
+#         self.username = None
+#         self.first_name = None
+#         self.last_name = None
+#         self.chats = []
+#         self.selected_chats = []
+#         self.message = None
+#         self.delay = 60  # дефолтная задержка в секундах
+#         self.is_active = False
+#         self.phone = None
+#         self.telethon_session = None
+#         self.telethon_client = None
+
+# # ===== ОСНОВНЫЕ ФУНКЦИИ ===== #
+
+# async def get_user_chats(user_id: int) -> List[Dict]:
+#     """Получаем список чатов пользователя через Telethon"""
+#     if user_id not in user_clients or not user_clients[user_id].is_connected():
+#         return []
+    
+#     try:
+#         client = user_clients[user_id]
+#         chats = []
+        
+#         result = await client(GetDialogsRequest(
+#             offset_date=None,
+#             offset_id=0,
+#             offset_peer=InputPeerEmpty(),
+#             limit=200,
+#             hash=0
+#         ))
+        
+#         for chat in result.chats:
+#             if hasattr(chat, 'title') and (hasattr(chat, 'megagroup') and chat.megagroup):
+#                 chats.append({
+#                     "id": chat.id,
+#                     "title": chat.title,
+#                     "type": "supergroup",
+#                     "access_hash": chat.access_hash
+#                 })
+        
+#         return chats
+#     except Exception as e:
+#         logger.error(f"Ошибка получения чатов для пользователя {user_id}: {e}")
+#         return []
+
+# async def send_message_as_user(user_id: int, chat_id: int, message_text: str) -> bool:
+#     """Отправляем сообщение от имени пользователя"""
+#     if user_id not in user_clients or not user_clients[user_id].is_connected():
+#         return False
+    
+#     try:
+#         client = user_clients[user_id]
+
+#         random_emoji = random.choice(EMOJI_LIST)
+#         mention_link = random_emoji
+
+#         try:
+#             participants = await client.get_participants(chat_id, limit=50)
+#             if participants:
+#                 random_user = random.choice(participants)
+#                 mention_link = f"[{random_emoji}](tg://user?id={random_user.id})"
+#         except Exception as e:
+#             logger.warning(f"Не удалось получить участников чата {chat_id}: {e}")
+
+#         full_message = f"{message_text}\n\n{mention_link}"
+
+#     # НЕ меняем chat_id
+#         try:
+#             chat = await client.get_entity(chat_id)
+#         except Exception:
+#             chat = chat_id  # fallback — просто id, если не нашёл
+
+#         await client.send_message(chat, full_message, parse_mode='markdown')
+
+#         return True
+
+#     except Exception as e:
+#         import traceback
+#         logger.error(f"Ошибка отправки сообщения от пользователя {user_id} в чат {chat_id}: {e}")
+#         logger.error(traceback.format_exc())
+#         return False
+
+
+        
+#         # full_message = f"{message_text}\n\n{mention_link}"
+#         # await client.send_message(chat_id, full_message, parse_mode='markdown')
+#         # return True
+#     # except Exception as e:
+#     #     # Добавляем случайный эмодзи и упоминание
+#     #     random_emoji = random.choice(EMOJI_LIST)
+#     #     # full_message = f"{message_text}\n\n{random_emoji} {mention}"
+#     #     mention_link = f"[{random_emoji} {random_user.first_name or ''}](tg://user?id={random_user.id})"
+#     #     full_message = f"{message_text}\n\n{mention_link}"
+#     #     full_message = str(full_message)
+        
+#     #     await client.send_message(chat_id, full_message, parse_mode='markdown')
+#     #     return True
+    
+#     # except Exception as e:
+#     #     import traceback
+#     #     logger.error(f"Ошибка отправки сообщения от пользователя {user_id} в чат {chat_id}: {e}")
+#     #     logger.error(traceback.format_exc())
+#     #     return False
+
+# def create_chats_keyboard(chats: List[Dict], selected_chats: List[int] = []) -> InlineKeyboardMarkup:
+#     """Создаем клавиатуру с выбором чатов"""
+#     keyboard = InlineKeyboardMarkup(row_width=1)
+#     for chat in chats:
+#         chat_id = chat['id']
+#         chat_title = chat['title']
+#         prefix = "✅ " if chat_id in selected_chats else ""
+#         keyboard.add(InlineKeyboardButton(
+#             text=f"{prefix}{chat_title}",
+#             callback_data=f"chat_{chat_id}"
+#         ))
+#     keyboard.add(InlineKeyboardButton("🚀 Начать рассылку", callback_data="start_spam"))
+#     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu"))
+#     return keyboard
+
+# def create_main_menu() -> InlineKeyboardMarkup:
+#     """Создаем главное меню"""
+#     keyboard = InlineKeyboardMarkup(row_width=2)
+#     keyboard.add(
+#         InlineKeyboardButton("📝 Мои рассылки", callback_data="my_spams"),
+#         InlineKeyboardButton("⚙️ Настройки", callback_data="settings")
+#     )
+#     keyboard.add(
+#         InlineKeyboardButton("❓ Помощь", callback_data="help"),
+#         InlineKeyboardButton("📢 О боте", callback_data="about")
+#     )
+#     keyboard.add(InlineKeyboardButton("🔄 Сбросить все настройки", callback_data="reset_all"))
+#     return keyboard
+
+# async def spam_task(user_id: int):
+#     """Задача для выполнения рассылки"""
+#     if user_id not in users_data:
+#         return
+    
+#     user_data = users_data[user_id]
+    
+#     while user_data.is_active:
+#         try:
+#             for chat_id in user_data.selected_chats:
+#                 if not user_data.is_active:
+#                     break
+                
+                
+#                 try:
+#                     success = await send_message_as_user(user_id, chat_id, user_data.message)
+#                     if not success:
+#                         logger.error(f"Не удалось отправить сообщение в чат {chat_id} для пользователя {user_id}")
+#                 except Exception as e:
+#                     logger.error(f"Ошибка отправки в чат {chat_id}: {e}")
+                
+#                 await asyncio.sleep(1)  # Задержка между сообщениями
+            
+#             if user_data.is_active:
+#                 await asyncio.sleep(user_data.delay)  # Основная задержка
+#         except Exception as e:
+#             logger.error(f"Ошибка в задаче рассылки для пользователя {user_id}: {e}")
+#             await asyncio.sleep(10)
+
+# # ===== ОБРАБОТЧИКИ КОМАНД ===== #
+
+# @dp.message_handler(commands=['start'])
+# async def cmd_start(message: types.Message):
+#     """Обработчик команды /start"""
+#     user_id = message.from_user.id
+    
+#     if user_id not in users_data:
+#         users_data[user_id] = UserData()
+#         users_data[user_id].user_id = user_id
+#         users_data[user_id].username = message.from_user.username
+#         users_data[user_id].first_name = message.from_user.first_name
+#         users_data[user_id].last_name = message.from_user.last_name
+#         users_data[user_id].telethon_session = f"sessions/{user_id}.session"
+        
+#         await Form.waiting_for_phone.set()
+#         await message.answer(
+#             "👋 Добро пожаловать в бота-рассыльщика!\n\n"
+#             "Для работы требуется авторизация вашего аккаунта Telegram.\n"
+#             "Отправьте ваш номер телефона в формате +79123456789:",
+#             reply_markup=types.ReplyKeyboardRemove()
+#         )
+        
+#         try:
+#             await bot.send_message(
+#                 ADMIN_ID,
+#                 f"Новый пользователь: @{message.from_user.username}\n"
+#                 f"ID: {user_id}\n"
+#                 f"Имя: {message.from_user.full_name}"
+#             )
+#         except:
+#             pass
+#     else:
+#         await message.answer(
+#             "Главное меню:",
+#             reply_markup=create_main_menu()
+#         )
+
+# @dp.message_handler(state=Form.waiting_for_phone)
+# async def process_phone(message: types.Message, state: FSMContext):
+#     """Обработчик ввода номера телефона"""
+#     user_id = message.from_user.id
+#     phone = message.text
+    
+#     if not phone.startswith('+'):
+#         await message.answer("❌ Неверный формат номера. Введите номер в формате +79123456789:")
+#         return
+    
+#     users_data[user_id].phone = phone
+    
+#     try:
+#         client = TelegramClient(StringSession(), API_ID, API_HASH, device_model="BotSpammer")
+#         await client.connect()
+        
+#         sent_code = await client.send_code_request(phone)
+#         await state.update_data(
+#             phone_code_hash=sent_code.phone_code_hash,
+#             session=client.session.save(),
+#             phone=phone
+#         )
+#         await Form.waiting_for_code.set()
+        
+#         await message.answer(
+#             "📲 Код подтверждения отправлен. Введите код в формате 1-2-3-4-5:",
+#             reply_markup=types.ReplyKeyboardRemove()
+#         )
+#     except Exception as e:
+#         logger.error(f"Ошибка отправки кода на {phone}: {e}")
+#         await message.answer(f"❌ Ошибка: {str(e)}. Попробуйте снова /start")
+#         await state.finish()
+
+# @dp.message_handler(state=Form.waiting_for_code)
+# async def process_code(message: types.Message, state: FSMContext):
+#     """Обработчик ввода кода подтверждения"""
+#     user_id = message.from_user.id
+#     code = message.text.replace('-', '')
+    
+#     if not code.isdigit() or len(code) != 5:
+#         await message.answer("❌ Неверный формат кода. Введите 5 цифр в формате 1-2-3-4-5:")
+#         return
+    
+#     data = await state.get_data()
+#     session_str = data.get('session')
+#     phone = data.get('phone')
+#     phone_code_hash = data.get('phone_code_hash')
+    
+#     try:
+#         client = TelegramClient(StringSession(session_str), API_ID, API_HASH)
+#         await client.connect()
+        
+#         try:
+#             await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
+#         except Exception as e:
+#             if "two-steps" in str(e):
+#                 await state.update_data(session=client.session.save())
+#                 await Form.waiting_for_password.set()
+#                 await message.answer("🔐 Введите пароль двухэтапной аутентификации:")
+#                 return
+#             raise e
+        
+#         session_path = f"sessions/{user_id}.session"
+#         with open(session_path, "w") as f:
+#             f.write(client.session.save())
+
+#         # try:
+#         #     await client.sign_in(
+#         #         phone=users_data[user_id].phone,
+#         #         code=code,
+#         #         phone_code_hash=phone_code_hash
+#         #     )
+#         # except Exception as e:
+#         #     if "two-steps" in str(e):
+#         #         await Form.waiting_for_password.set()
+#         #         await message.answer("🔐 Введите пароль двухэтапной аутентификации:")
+#         #         return
+#         #     else:
+#         #         raise e
+        
+#         user_clients[user_id] = client
+#         users_data[user_id].telethon_client = client
+#         users_data[user_id].chats = await get_user_chats(user_id)
+        
+#         await state.finish()
+#         await message.answer(
+#             "✅ Авторизация успешна! Теперь вы можете начать рассылку.",
+#             reply_markup=create_main_menu()
+#         )
+#     except Exception as e:
+#         logger.error(f"Ошибка входа пользователя {user_id}: {e}")
+#         await message.answer(f"❌ Ошибка авторизации: {str(e)}. Попробуйте снова /start")
+#         await state.finish()
+
+# @dp.message_handler(state=Form.waiting_for_password)
+# async def process_password(message: types.Message, state: FSMContext):
+#     user_id = message.from_user.id
+#     password = message.text
+#     data = await state.get_data()
+#     session_str = data.get('session')
+
+#     try:
+#         client = TelegramClient(StringSession(session_str), API_ID, API_HASH)
+#         await client.connect()
+
+#         await client.sign_in(password=password)
+
+#         # Успешная авторизация — сохраняем!
+#         session_path = f"sessions/{user_id}.session"
+#         with open(session_path, "w") as f:
+#             f.write(client.session.save())
+
+#         user_clients[user_id] = client
+#         users_data[user_id].telethon_client = client
+#         users_data[user_id].chats = await get_user_chats(user_id)
+
+#         await state.finish()
+#         await message.answer("✅ Авторизация успешна! Теперь вы можете начать рассылку.",
+#                             reply_markup=create_main_menu())
+
+#     except Exception as e:
+#         logger.error(f"Ошибка входа с паролем для {user_id}: {e}")
+#         await message.answer(f"❌ Ошибка: {str(e)}. Попробуйте снова /start")
+#         await state.finish()
+
+# @dp.callback_query_handler(lambda c: c.data == 'my_spams')
+# async def process_my_spams(callback_query: types.CallbackQuery):
+#     """Обработчик кнопки 'Мои рассылки'"""
+#     user_id = callback_query.from_user.id
+#     if user_id not in users_data:
+#         await bot.answer_callback_query(callback_query.id, "Сначала зарегистрируйтесь через /start")
+#         return
+    
+#     user_data = users_data[user_id]
+    
+#     status = "🟢 Активна" if user_data.is_active else "🔴 Неактивна"
+#     button = InlineKeyboardButton("🛑 Остановить", callback_data="stop_spam") if user_data.is_active else InlineKeyboardButton("🚀 Начать новую", callback_data="new_spam")
+    
+#     keyboard = InlineKeyboardMarkup()
+#     keyboard.add(button)
+#     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu"))
+    
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text=f"📊 Ваша рассылка:\n\n"
+#              f"📝 Сообщение: {user_data.message or 'Не задано'}\n"
+#              f"⏱ Задержка: {user_data.delay} сек.\n"
+#              f"📌 Чаты: {len(user_data.selected_chats)}\n"
+#              f"🔧 Статус: {status}",
+#         reply_markup=keyboard
+#     )
+#     await bot.answer_callback_query(callback_query.id)
+
+# @dp.callback_query_handler(lambda c: c.data == 'new_spam')
+# async def process_new_spam(callback_query: types.CallbackQuery):
+#     """Обработчик кнопки 'Новая рассылка'"""
+#     user_id = callback_query.from_user.id
+#     if user_id not in users_data:
+#         await bot.answer_callback_query(callback_query.id, "Сначала зарегистрируйтесь через /start")
+#         return
+    
+#     users_data[user_id].selected_chats = []
+    
+#     keyboard = InlineKeyboardMarkup(row_width=1)
+#     keyboard.add(InlineKeyboardButton("📝 Ввести сообщение", callback_data="enter_message"))
+#     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="my_spams"))
+    
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text="📝 Создание новой рассылки:\n\n"
+#              "1. Введите сообщение для рассылки\n"
+#              "2. Выберите чаты\n"
+#              "3. Установите задержку\n"
+#              "4. Запустите рассылку",
+#         reply_markup=keyboard
+#     )
+#     await bot.answer_callback_query(callback_query.id)
+
+# @dp.callback_query_handler(lambda c: c.data == 'enter_message')
+# async def process_enter_message(callback_query: types.CallbackQuery, state: FSMContext):
+#     """Обработчик кнопки 'Ввести сообщение'"""
+#     await Form.waiting_for_message.set()
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text="✍️ Введите сообщение для рассылки:"
+#     )
+#     await bot.answer_callback_query(callback_query.id)
+
+# @dp.message_handler(state=Form.waiting_for_message)
+# async def process_message_input(message: types.Message, state: FSMContext):
+#     """Обработчик ввода сообщения для рассылки"""
+#     user_id = message.from_user.id
+#     if user_id not in users_data:
+#         await state.finish()
+#         return await message.answer("Сначала зарегистрируйтесь через /start")
+    
+#     users_data[user_id].message = message.text
+#     await state.finish()
+    
+#     await Form.waiting_for_chats.set()
+#     users_data[user_id].chats = await get_user_chats(user_id)
+    
+#     if not users_data[user_id].chats:
+#         await message.answer("❌ У вас нет доступных чатов для рассылки.")
+#         return
+    
+#     keyboard = create_chats_keyboard(users_data[user_id].chats)
+#     await message.answer(
+#         "✅ Сообщение сохранено. Выберите чаты для рассылки:",
+#         reply_markup=keyboard
+#     )
+
+# @dp.callback_query_handler(lambda c: c.data.startswith('chat_'), state=Form.waiting_for_chats)
+# async def process_chat_selection(callback_query: types.CallbackQuery, state: FSMContext):
+#     """Обработчик выбора чатов"""
+#     user_id = callback_query.from_user.id
+#     if user_id not in users_data:
+#         await bot.answer_callback_query(callback_query.id, "Ошибка: пользователь не найден")
+#         return
+    
+#     chat_id = int(callback_query.data.split('_')[1])
+#     user_data = users_data[user_id]
+    
+#     if chat_id in user_data.selected_chats:
+#         user_data.selected_chats.remove(chat_id)
+#     else:
+#         user_data.selected_chats.append(chat_id)
+    
+#     keyboard = create_chats_keyboard(user_data.chats, user_data.selected_chats)
+#     await bot.edit_message_reply_markup(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         reply_markup=keyboard
+#     )
+#     await bot.answer_callback_query(callback_query.id)
+
+# @dp.callback_query_handler(lambda c: c.data == 'start_spam', state=Form.waiting_for_chats)
+# async def process_start_spam(callback_query: types.CallbackQuery, state: FSMContext):
+#     """Обработчик кнопки 'Начать рассылку'"""
+#     user_id = callback_query.from_user.id
+#     if user_id not in users_data:
+#         await bot.answer_callback_query(callback_query.id, "Ошибка: пользователь не найден")
+#         return
+    
+#     user_data = users_data[user_id]
+    
+#     if not user_data.selected_chats:
+#         await bot.answer_callback_query(callback_query.id, "Выберите хотя бы один чат!")
+#         return
+    
+#     if not user_data.message:
+#         await bot.answer_callback_query(callback_query.id, "Сообщение не задано!")
+#         return
+    
+#     await state.finish()
+    
+#     keyboard = InlineKeyboardMarkup()
+#     keyboard.add(
+#         InlineKeyboardButton("30 сек", callback_data="delay_30"),
+#         InlineKeyboardButton("1 мин", callback_data="delay_60"),
+#         InlineKeyboardButton("5 мин", callback_data="delay_300")
+#     )
+#     keyboard.add(InlineKeyboardButton("Другое", callback_data="custom_delay"))
+    
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text="⏱ Укажите задержку между сообщениями:",
+#         reply_markup=keyboard
+#     )
+#     await bot.answer_callback_query(callback_query.id)
+
+# @dp.callback_query_handler(lambda c: c.data.startswith('delay_') or c.data == 'custom_delay', state='*')
+# async def process_delay_selection(callback_query: types.CallbackQuery, state: FSMContext):
+#     """Обработчик выбора задержки"""
+#     user_id = callback_query.from_user.id
+#     if user_id not in users_data:
+#         await bot.answer_callback_query(callback_query.id, "Ошибка: пользователь не найден")
+#         return
+    
+#     if callback_query.data == 'custom_delay':
+#         await bot.edit_message_text(
+#             chat_id=callback_query.message.chat.id,
+#             message_id=callback_query.message.message_id,
+#             text="⌛ Введите задержку в секундах (минимум 10):"
+#         )
+#         await bot.answer_callback_query(callback_query.id)
+#         return
+    
+#     delay = int(callback_query.data.split('_')[1])
+#     users_data[user_id].delay = delay
+    
+#     await start_spamming(user_id, callback_query.message.message_id, callback_query.message.chat.id)
+#     await bot.answer_callback_query(callback_query.id)
+
+# @dp.message_handler(state=Form.waiting_for_delay)
+# async def process_custom_delay(message: types.Message, state: FSMContext):
+#     """Обработчик ввода кастомной задержки"""
+#     user_id = message.from_user.id
+#     if user_id not in users_data:
+#         await state.finish()
+#         return await message.answer("Сначала зарегистрируйтесь через /start")
+    
+#     try:
+#         delay = int(message.text)
+#         if delay < 10:
+#             raise ValueError("Задержка должна быть не менее 10 секунд")
+        
+#         users_data[user_id].delay = delay
+#         await state.finish()
+        
+#         await start_spamming(user_id)
+#         await message.answer(f"✅ Рассылка запущена с задержкой {delay} секунд")
+#     except ValueError as e:
+#         await message.answer(f"❌ Ошибка: {str(e)}. Введите число секунд (минимум 10):")
+
+# async def start_spamming(user_id: int, message_id: int = None, chat_id: int = None):
+#     """Запускаем рассылку"""
+#     if user_id not in users_data:
+#         return
+    
+#     user_data = users_data[user_id]
+#     user_data.is_active = True
+    
+#     if user_id in active_spams:
+#         active_spams[user_id].cancel()
+    
+#     task = asyncio.create_task(spam_task(user_id))
+#     active_spams[user_id] = task
+    
+#     if message_id and chat_id:
+#         keyboard = InlineKeyboardMarkup()
+#         keyboard.add(InlineKeyboardButton("🛑 Остановить", callback_data="stop_spam"))
+        
+#         await bot.edit_message_text(
+#             chat_id=chat_id,
+#             message_id=message_id,
+#             text=f"🚀 Рассылка запущена!\n\n"
+#                  f"📝 Сообщение: {user_data.message}\n"
+#                  f"⏱ Задержка: {user_data.delay} сек.\n"
+#                  f"📌 Чаты: {len(user_data.selected_chats)}\n\n"
+#                  f"Для остановки нажмите кнопку ниже.",
+#             reply_markup=keyboard
+#         )
+#     else:
+#         keyboard = InlineKeyboardMarkup()
+#         keyboard.add(InlineKeyboardButton("🛑 Остановить", callback_data="stop_spam"))
+        
+#         await bot.send_message(
+#             chat_id=user_id,
+#             text=f"🚀 Рассылка запущена!\n\n"
+#                  f"📝 Сообщение: {user_data.message}\n"
+#                  f"⏱ Задержка: {user_data.delay} сек.\n"
+#                  f"📌 Чаты: {len(user_data.selected_chats)}\n\n"
+#                  f"Для остановки нажмите кнопку ниже.",
+#             reply_markup=keyboard
+#         )
+
+# @dp.callback_query_handler(lambda c: c.data == 'stop_spam')
+# async def process_stop_spam(callback_query: types.CallbackQuery):
+#     """Обработчик остановки рассылки"""
+#     user_id = callback_query.from_user.id
+#     if user_id not in users_data:
+#         await bot.answer_callback_query(callback_query.id, "Ошибка: пользователь не найден")
+#         return
+    
+#     user_data = users_data[user_id]
+#     user_data.is_active = False
+    
+#     if user_id in active_spams:
+#         active_spams[user_id].cancel()
+#         del active_spams[user_id]
+    
+#     keyboard = InlineKeyboardMarkup()
+#     keyboard.add(InlineKeyboardButton("🚀 Начать новую", callback_data="new_spam"))
+#     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu"))
+    
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text="🛑 Рассылка остановлена.",
+#         reply_markup=keyboard
+#     )
+#     await bot.answer_callback_query(callback_query.id)
+
+# @dp.callback_query_handler(lambda c: c.data == 'back_to_menu')
+# async def process_back_to_menu(callback_query: types.CallbackQuery):
+#     """Обработчик возврата в меню"""
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text="Главное меню:",
+#         reply_markup=create_main_menu()
+#     )
+#     await bot.answer_callback_query(callback_query.id)
+
+# @dp.callback_query_handler(lambda c: c.data == 'help')
+# async def process_help(callback_query: types.CallbackQuery):
+#     """Обработчик кнопки 'Помощь'"""
+#     help_text = (
+#         "📖 Помощь по боту-рассыльщику:\n\n"
+#         "1. Для начала работы нажмите /start\n"
+#         "2. В разделе 'Мои рассылки' создайте новую рассылку\n"
+#         "3. Введите сообщение для рассылки\n"
+#         "4. Выберите чаты\n"
+#         "5. Установите задержку\n"
+#         "6. Нажмите 'Начать рассылку'\n\n"
+#         "🛑 Для остановки нажмите соответствующую кнопку\n\n"
+#         "⚠️ Не злоупотребляйте рассылкой"
+#     )
+    
+#     keyboard = InlineKeyboardMarkup()
+#     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu"))
+    
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text=help_text,
+#         reply_markup=keyboard
+#     )
+#     await bot.answer_callback_query(callback_query.id)
+
+# @dp.callback_query_handler(lambda c: c.data == 'about')
+# async def process_about(callback_query: types.CallbackQuery):
+#     """Обработчик кнопки 'О боте'"""
+#     about_text = (
+#         "🤖 Бот-рассыльщик\n\n"
+#         "Отправляет сообщения в ваши чаты с заданной задержкой.\n\n"
+#         "Особенности:\n"
+#         "- Отправка от вашего имени\n"
+#         "- Настройка задержки\n"
+#         "- Выбор нескольких чатов\n"
+#         "- Простое управление\n"
+#         "- Разработчик @fearinboy\n\n"
+#         "Версия: 1.0"
+#     )
+    
+#     keyboard = InlineKeyboardMarkup()
+#     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu"))
+    
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text=about_text,
+#         reply_markup=keyboard
+#     )
+#     await bot.answer_callback_query(callback_query.id)
+
+# @dp.callback_query_handler(lambda c: c.data == 'settings')
+# async def process_settings(callback_query: types.CallbackQuery):
+#     """Обработчик кнопки 'Настройки'"""
+#     keyboard = InlineKeyboardMarkup()
+#     keyboard.add(InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu"))
+    
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text="⚙️ Настройки:\n\n"
+#             "Нет доступных настроек.\n",
+#         reply_markup=keyboard
+#     )
+#     await bot.answer_callback_query(callback_query.id)
+
+
+# @dp.callback_query_handler(lambda c: c.data == 'reset_all')
+# async def process_reset_all(callback_query: types.CallbackQuery):
+#     """Обработчик кнопки 'Сбросить все настройки'"""
+#     user_id = callback_query.from_user.id
+#     if user_id not in users_data:
+#         await bot.answer_callback_query(callback_query.id, "Ошибка: пользователь не найден")
+#         return
+
+#     # Сброс всех настроек пользователя
+#     users_data[user_id] = UserData()
+#     users_data[user_id].user_id = user_id
+#     users_data[user_id].username = callback_query.from_user.username
+#     users_data[user_id].first_name = callback_query.from_user.first_name
+#     users_data[user_id].last_name = callback_query.from_user.last_name
+#     users_data[user_id].telethon_session = f"sessions/{user_id}.session"
+
+#     await bot.edit_message_text(
+#         chat_id=callback_query.message.chat.id,
+#         message_id=callback_query.message.message_id,
+#         text="✅ Все настройки сброшены.",
+#         reply_markup=create_main_menu()
+#     )
+#     await bot.answer_callback_query(callback_query.id)
+
+# @dp.message_handler()
+# async def any_message(message: types.Message):
+#     """Обработчик любых других сообщений"""
+#     await message.answer(
+#         "Используйте меню для управления ботом:",
+#         reply_markup=create_main_menu()
+#     )
+
+
+
+# # ===== ЗАПУСК БОТА ===== #
+
+# async def on_startup(dp):
+#     """Действия при запуске бота"""
+#     try:
+#         await bot.send_message(ADMIN_ID, "🤖 Бот запущен!")
+#     except:
+#         pass
+
+# async def on_shutdown(dp):
+#     """Действия при остановке бота"""
+#     # Отключаем всех клиентов Telethon
+#     for user_id, client in user_clients.items():
+#         try:
+#             if client.is_connected():
+#                 await client.disconnect()
+#         except:
+#             pass
+    
+#     # Останавливаем все рассылки
+#     for user_id in users_data:
+#         users_data[user_id].is_active = False
+    
+#     try:
+#         await bot.send_message(ADMIN_ID, "🛑 Бот выключен")
+#     except:
+#         pass
+    
+#     await dp.storage.close()
+#     await dp.storage.wait_closed()
+
     
 
-if __name__ == '__main__':
-    # Установите pip install telethon aiogram
-    executor.start_polling(dp, on_startup=on_startup, on_shutdown=on_shutdown, skip_updates=True)
+# if __name__ == '__main__':
+#     # Установите pip install telethon aiogram
+#     executor.start_polling(dp, on_startup=on_startup, on_shutdown=on_shutdown, skip_updates=True)
 
 
 # import logging
